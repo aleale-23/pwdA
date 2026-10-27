@@ -1,0 +1,137 @@
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.cell import Cell
+
+def apply_format_to_cell(ws, target_coordinate, format_dictionary):
+    """
+    Menerapkan properti format dari dictionary ke sel atau RANGE sel (misal: 'B2:M30') 
+    di memori (Worksheet). Fungsi ini murni melakukan pemformatan saja.
+    """
+    # Ambil referensi dari koordinat yang diinput
+    selection = ws[target_coordinate]
+    
+    # Normalisasi: jika input berupa satu sel tunggal, bungkus ke dalam list agar bisa di-loop
+    if isinstance(selection, Cell):
+        cells_to_format = [selection]
+    else:
+        # Jika berupa range (tuple of tuples), pecah menjadi satu list sel flat
+        cells_to_format = [cell for row in selection for cell in row]
+
+    # Lakukan perulangan untuk menerapkan format ke setiap sel yang ditargetkan
+    for cell in cells_to_format:
+        # 1. Terapkan Number Format
+        if "number_format" in format_dictionary:
+            cell.number_format = format_dictionary["number_format"]
+
+        # 2. Terapkan Font
+        if "font" in format_dictionary:
+            f_data = format_dictionary["font"]
+            cell.font = Font(
+                name=f_data.get("name"),
+                size=f_data.get("size"),
+                bold=f_data.get("bold"),
+                italic=f_data.get("italic"),
+                color=f_data.get("color")
+            )
+
+        # 3. Terapkan Warna Latar (Fill)
+        if "fill_type" in format_dictionary and format_dictionary["fill_type"]:
+            cell.fill = PatternFill(
+                fill_type=format_dictionary["fill_type"],
+                start_color=format_dictionary.get("fill_color"),
+                end_color=format_dictionary.get("fill_color")
+            )
+
+        # 4. Terapkan Alignment
+        if "alignment" in format_dictionary:
+            a_data = format_dictionary["alignment"]
+            cell.alignment = Alignment(
+                horizontal=a_data.get("horizontal"),
+                vertical=a_data.get("vertical"),
+                wrap_text=a_data.get("wrap_text", False)
+            )
+
+        # 5. Terapkan Garis Batas (Border)
+        if "border" in format_dictionary:
+            b_data = format_dictionary["border"]
+            cell.border = Border(
+                top=Side(style=b_data.get("top")) if b_data.get("top") else Side(style=None),
+                bottom=Side(style=b_data.get("bottom")) if b_data.get("bottom") else Side(style=None),
+                left=Side(style=b_data.get("left")) if b_data.get("left") else Side(style=None),
+                right=Side(style=b_data.get("right")) if b_data.get("right") else Side(style=None)
+            )
+
+        # 6. Terapkan Dimensi Ukuran Sel (Height & Width)
+        if "size_dimensions" in format_dictionary:
+            dims = format_dictionary["size_dimensions"]
+            row_num = cell.row
+            col_letter = get_column_letter(cell.column)
+            
+            if dims.get("height"):
+                ws.row_dimensions[row_num].height = dims["height"]
+            if dims.get("width"):
+                ws.column_dimensions[col_letter].width = dims["width"]
+
+
+def merge_and_center_cells(ws, target_range, new_value):
+    """
+    Menggabungkan (merge) range sel tertentu, menetapkan alignment menjadi center
+    (secara horizontal dan vertical), dan mengisi nilai baru (new_value).
+    """
+    # 1. Lakukan proses merge pada range sel
+    ws.merge_cells(target_range)
+    
+    # 2. Ambil referensi sel kiri-atas (sel utama hasil merge)
+    first_cell_coord = target_range.split(":")[0]
+    top_left_cell = ws[first_cell_coord]
+    
+    # 3. Masukkan nilai baru ke sel utama tersebut
+    top_left_cell.value = new_value
+    
+    # 4. Atur teks agar berada di tengah-tengah secara penuh (Merge & Center)
+    top_left_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+
+def save_workbook(wb, file_path):
+    """
+    Menyimpan seluruh perubahan objek workbook dari memori ke file Excel lokal.
+    """
+    wb.save(file_path)
+    wb.close()
+    print(f"[SUCCESS] File Excel berhasil disimpan ke: {file_path}")
+
+
+# =====================================================================
+# EKSEKUSI LANGSUNG DI DALAM BLOK MAIN
+# =====================================================================
+if __name__ == "__main__":
+    FILE_OUTPUT = "laporan_baru_2026.xlsx"
+
+    # 1. Siapkan workbook baru di memori
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Rekap Data"
+
+    # 2. Contoh dictionary format yang didapatkan dari file lama
+    format_sampel = {
+        "number_format": '"Rp"#,##0',
+        "size_dimensions": {"height": 25.0, "width": 15.0},
+        "font": {"name": "Calibri", "size": 12.0, "bold": True, "italic": False, "color": "00000000"},
+        "fill_type": "solid",
+        "fill_color": "FFF9CB9C",  # Warna Peach kustom Anda
+        "border": {"top": "thin", "bottom": "double", "left": "thin", "right": "thin"},
+        "alignment": {"horizontal": "center", "vertical": "center", "wrap_text": True}
+    }
+
+    print("Menerapkan format ke memori...")
+    # Sekarang fungsi ini murni mewarnai & memberi border range B2:M30 tanpa mengisi value apa pun
+    apply_format_to_cell(ws, "B2:M30", format_dictionary=format_sampel)
+
+    print("Membuat Merge & Center...")
+    # Menggabungkan sel B2 sampai C5, menjadikannya rata tengah, dan memberikan value teks
+    merge_and_center_cells(ws, "B2:C5", new_value="JUDUL LAPORAN")
+
+    print("Menyimpan file...")
+    # Menyimpan hasil manipulasi memori ke file fisik Excel
+    save_workbook(wb, FILE_OUTPUT)
