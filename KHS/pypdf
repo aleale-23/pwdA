@@ -1,0 +1,51 @@
+import sys
+from pypdf import PdfReader
+
+def cek_kata_kunci(nama_file_pdf, kata_kunci):
+    spgt = False
+    
+    try:
+        # 1. Buka file PDF
+        reader = PdfReader(nama_file_pdf)
+        
+        # 2. Loop setiap halaman dengan aman
+        for page in reader.pages:
+            # Gunakan penanganan error jika proses ekstraksi halaman gagal
+            try:
+                # Ambil teks mentah
+                text = page.extract_text()
+                
+                # VALIDASI STABILITAS VERSI 3:
+                # Cek apakah text valid (tidak None atau kosong)
+                if text:
+                    # Ubah ke lowercase agar pencarian tidak sensitif huruf besar/kecil
+                    if kata_kunci.lower() in text.lower():
+                        spgt = True
+                        break # Langsung keluar dari loop jika sudah ketemu
+                        
+            except Exception as e:
+                # Abaikan halaman yang rusak/gagal ekstrak agar program tidak berhenti total
+                print(f"Peringatan: Gagal membaca salah satu halaman karena: {e}")
+                continue
+                
+    except FileNotFoundError:
+        print(f"Error: File '{nama_file_pdf}' tidak ditemukan.")
+    except Exception as e:
+        print(f"Error fatal saat membuka PDF: {e}")
+        
+    return spgt
+
+# --- CARA JALANKAN DI PYTHON 3.8 / WINDOWS 7 ---
+
+# Set encoding output terminal agar Windows 7 tidak crash saat mencetak karakter aneh
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
+
+# Panggil fungsi
+hasil_cek = cek_kata_kunci("dokumen.pdf", "husb")
+
+if hasil_cek:
+    spgt = True
+    print("Status: spgt = True (Kata 'husb' ditemukan!)")
+else:
+    print("Status: spgt = False (Kata 'husb' tidak ditemukan)")
