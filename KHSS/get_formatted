@@ -1,0 +1,134 @@
+import os
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
+import pprint
+
+def get_format_selected_cell(file_path, sheet_name, cell_coordinate):
+    """
+    Mengambil informasi formatting beserta dimensi ukuran (height & width)
+    dari satu sel yang dipilih dalam file Excel.
+    
+    :param file_path: String, jalur ke file Excel (misal: 'data.xlsx')
+    :param sheet_name: String, nama sheet (misal: 'Sheet1')
+    :param cell_coordinate: String, koordinat sel (misal: 'A1')
+    :return: Dictionary berisi properti format sel beserta dimensinya
+    """
+    # 1. Muat workbook dan pilih sheet
+    wb = load_workbook(file_path, data_only=False)
+    
+    if sheet_name not in wb.sheetnames:
+        raise ValueError(f"Sheet '{sheet_name}' tidak ditemukan di dalam file.")
+        
+    ws = wb[sheet_name]
+    cell = ws[cell_coordinate]
+    
+    # 2. Ambil informasi warna latar (Fill) jika ada
+    fill_color = None
+    if cell.fill and cell.fill.fill_type:
+        if hasattr(cell.fill, 'start_color') and cell.fill.start_color:
+            fill_color = cell.fill.start_color.index
+
+    # 3. Ambil dimensi Height (Baris) dan Width (Kolom) sel
+    row_num = cell.row
+    col_letter = get_column_letter(cell.column)
+    
+    # Ambil nilai kustom, jika None gunakan ukuran default sheet
+    cell_height = ws.row_dimensions[row_num].height
+    if cell_height is None:
+        cell_height = ws.sheet_format.defaultRowHeight
+        
+    cell_width = ws.column_dimensions[col_letter].width
+    if cell_width is None:
+        cell_width = ws.sheet_format.baseColWidth
+
+    # 4. Susun data format ke dalam dictionary
+    format_info = {
+        "coordinate": cell_coordinate,
+        "value": cell.value,
+        # --- PENAMBAHAN DIMENSI UKURAN DI SINI ---
+        "size_dimensions": {
+            "height": cell_height,
+            "width": cell_width
+        },
+        # -----------------------------------------
+        "number_format": cell.number_format,
+        "font": {
+            "name": cell.font.name,
+            "size": cell.font.size,
+            "bold": cell.font.bold,
+            "italic": cell.font.italic,
+            "color": cell.font.color.index if cell.font.color else None
+        },
+        "fill_type": cell.fill.fill_type,
+        "fill_color": fill_color,
+        "border": {
+            "top": cell.border.top.style if cell.border.top else None,
+            "bottom": cell.border.bottom.style if cell.border.bottom else None,
+            "left": cell.border.left.style if cell.border.left else None,
+            "right": cell.border.right.style if cell.border.right else None
+        },
+        "alignment": {
+            "horizontal": cell.alignment.horizontal,
+            "vertical": cell.alignment.vertical,
+            "wrap_text": cell.alignment.wrap_text
+        }
+    }
+    
+    wb.close()
+    
+    return format_info
+
+
+
+    
+
+if __name__ == "__main__":
+    # --- KONFIGURASI PARAMETER ---
+    FILE_EXCEL = "Rundown ICCD.xlsx"
+    NAMA_SHEET = "RD EVAL"
+    KOORDINAT_SEL = "A2"
+    
+    print("=" * 50)
+    print(" PROGRAM PEMBACA FORMAT SEL EXCEL")
+    print("=" * 50)
+    
+    
+
+    try:
+        print(f"Membaca format sel {KOORDINAT_SEL} dari {FILE_EXCEL}...")
+        hasil_format = get_format_selected_cell(FILE_EXCEL, NAMA_SHEET, KOORDINAT_SEL)
+        
+        
+        print("\nHasil Format Sel:")
+        pprint.pprint(hasil_format, sort_dicts=False)
+        
+    except Exception as e:
+        print(f"\n[Terjadi Kesalahan]: {e}")
+        
+    print("=" * 50)
+
+
+##
+##output
+##
+##==================================================
+## PROGRAM PEMBACA FORMAT SEL EXCEL
+##==================================================
+##Membaca format sel A2 dari Rundown ICCD.xlsx...
+##
+##Hasil Format Sel:
+##{'coordinate': 'A2',
+## 'value': 'NO',
+## 'size_dimensions': {'height': 15.75, 'width': 7.13},
+## 'number_format': 'General',
+## 'font': {'name': 'Tahoma',
+##          'size': 12.0,
+##          'bold': True,
+##          'italic': False,
+##          'color': 'FF000000'},
+## 'fill_type': 'solid',
+## 'fill_color': 'FFF9CB9C',
+## 'border': {'top': 'thin', 'bottom': 'thin', 'left': 'thin', 'right': 'thin'},
+## 'alignment': {'horizontal': 'center', 'vertical': 'center', 'wrap_text': True}}
+##==================================================
+##
